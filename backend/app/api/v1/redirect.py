@@ -1,6 +1,4 @@
 
-from app.utils.colors import pgreen
-from app.utils.colors import pyellow
 from fastapi import status
 from fastapi import HTTPException
 from fastapi import Depends
@@ -17,9 +15,7 @@ router = APIRouter(
 @router.get("/re/{id}", status_code=307)
 async def redirecting(id: str, db: Session = Depends(get_db)):
     try:
-        pyellow(id)
         id_query = db.query(models.Url).filter(models.Url.id == id).first()
-        pgreen(id_query)
         if id_query is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,

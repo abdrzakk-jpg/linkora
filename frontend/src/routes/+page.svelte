@@ -1,427 +1,836 @@
 <script>
-  // No logic — static UI only
+  // ── State ────────────────────────────────────────────────
+  let inputUrl = "";
+  let shortUrl = "";
+  let urlValid = null; // true | false | null
+  let loading = false;
+  let copied = false;
+  let copyTimer = null;
+
+  // error: null | { kind: '422'|'500'|'network', message: string }
+  let error = null;
+
+  // ── Derived ──────────────────────────────────────────────
+  $: hasResult = shortUrl !== "";
+  $: canSubmit = inputUrl.trim() !== "" && !loading;
+
+  // ── API call ─────────────────────────────────────────────
+  async function shorten() {
+    if (!canSubmit) return;
+
+    loading = true;
+    error = null;
+    shortUrl = "";
+    urlValid = null;
+
+    try {
+      const res = await fetch("http://localhost:8000/v1/sh", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: inputUrl.trim() }),
+      });
+
+      if (res.status === 201) {
+        const data = await res.json();
+        shortUrl = data.url;
+        urlValid = data.valid;
+        error = null;
+      } else if (res.status === 422) {
+        const data = await res.json();
+        // Pydantic v2 detail is an array of objects
+        const first = data?.detail?.[0];
+        const msg =
+          first?.msg ?? "Enter a valid URL (e.g. https://example.com).";
+        error = { kind: "422", message: msg };
+      } else if (res.status === 500) {
+        error = {
+          kind: "500",
+          message: "Server error. Try again in a moment.",
+        };
+      } else {
+        error = {
+          kind: "500",
+          message: `Unexpected response (${res.status}).`,
+        };
+      }
+    } catch {
+      error = {
+        kind: "network",
+        message: "Could not reach the server. Check your connection.",
+      };
+    } finally {
+      loading = false;
+    }
+  }
+
+  // ── Copy ─────────────────────────────────────────────────
+  async function copy() {
+    if (!shortUrl) return;
+    try {
+      await navigator.clipboard.writeText(shortUrl);
+      copied = true;
+      clearTimeout(copyTimer);
+      copyTimer = setTimeout(() => (copied = false), 2000);
+    } catch {
+      /* clipboard denied */
+    }
+  }  
+  // ── Visit ─────────────────────────────────────────────────
+  async function visit(url) {
+    document.location.href=url
+  }
+
+  // ── Enter key ────────────────────────────────────────────
+  function onKeydown(e) {
+    if (e.key === "Enter") shorten();
+  }
+
+  // ── Theme ────────────────────────────────────────────────
+  let dark = true;
+  function toggleTheme() {
+    dark = !dark;
+    if (typeof document !== "undefined") {
+      document.documentElement.classList.toggle("dark", dark);
+    }
+  }
 </script>
 
 <svelte:head>
-  <title>Snip — URL Shortener</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap"
-    rel="stylesheet"
-  />
+  <title>Linkora</title>
+  <meta name="description" content="Shorten any URL instantly." />
 </svelte:head>
 
-<main class="root">
-  <!-- Atmospheric glow -->
-  <div class="glow" aria-hidden="true"></div>
-
-  <!-- Card -->
-  <div class="card">
-
-    <!-- Wordmark / title -->
-    <div class="card-header">
-      <div class="logo-mark" aria-hidden="true">
-        <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M10.5 3H14.25C14.6478 3 15.0294 3.15804 15.3107 3.43934C15.592 3.72064 15.75 4.10218 15.75 4.5V13.5C15.75 13.8978 15.592 14.2794 15.3107 14.5607C15.0294 14.842 14.6478 15 14.25 15H3.75C3.35218 15 2.97064 14.842 2.68934 14.5607C2.40804 14.2794 2.25 13.8978 2.25 13.5V9.75" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M6.75 11.25L15.75 2.25" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M10.5 2.25H15.75V7.5" stroke="#818cf8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+<div class="root" class:dark>
+  <div class="page">
+    <!-- ── Theme toggle ── -->
+    <button
+      class="theme-btn"
+      on:click={toggleTheme}
+      aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+      type="button"
+    >
+      {#if dark}
+        <!-- Sun icon -->
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <circle cx="12" cy="12" r="4" />
+          <line x1="12" y1="2" x2="12" y2="5" />
+          <line x1="12" y1="19" x2="12" y2="22" />
+          <line x1="4.22" y1="4.22" x2="6.34" y2="6.34" />
+          <line x1="17.66" y1="17.66" x2="19.78" y2="19.78" />
+          <line x1="2" y1="12" x2="5" y2="12" />
+          <line x1="19" y1="12" x2="22" y2="12" />
+          <line x1="4.22" y1="19.78" x2="6.34" y2="17.66" />
+          <line x1="17.66" y1="6.34" x2="19.78" y2="4.22" />
         </svg>
-      </div>
-      <h1 class="title">URL Shortener</h1>
-      <p class="subtitle">Paste a long URL and get a clean, shareable link instantly.</p>
-    </div>
+      {:else}
+        <!-- Moon icon -->
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+        >
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+        </svg>
+      {/if}
+    </button>
 
-    <!-- Form area -->
-    <div class="form-body">
+    <!-- ── Card ── -->
+    <article class="card">
+      <!-- Header -->
+      <header class="card-head">
+        <div class="wordmark">
+          <!-- Link/shortcut icon -->
+          <svg
+            class="wm-icon"
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
+          >
+            <path
+              d="M11.5 4.5H15.5C15.7761 4.5 16 4.72386 16 5V15C16 15.2761 15.7761 15.5 15.5 15.5H4.5C4.22386 15.5 4 15.2761 4 15V11"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M8.5 11.5L15.5 4.5"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            />
+            <path
+              d="M11.5 4.5H15.5V8.5"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          <span class="wm-text">Linkora</span>
+        </div>
+        <p class="card-sub">Paste a URL. Get a link that fits.</p>
+      </header>
 
-      <!-- Input field -->
-      <div class="field-group">
-        <label class="field-label" for="original-url">Original URL</label>
-        <div class="input-wrapper">
-          <span class="input-icon" aria-hidden="true">
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M8.51194 3.00541C9.18829 2.54366 10.0405 2.37312 10.8561 2.53441C11.6716 2.6957 12.3857 3.17669 12.8232 3.86545C13.2607 4.55421 13.3851 5.39163 13.1695 6.17511C12.9539 6.95859 12.4167 7.61791 11.6925 7.99381L10.5769 8.58988C10.3272 8.72336 10.0398 8.76477 9.76354 8.70775C9.48726 8.65074 9.23896 8.49887 9.06196 8.27902C8.88496 8.05917 8.78987 7.78476 8.79343 7.50294C8.797 7.22113 8.89902 6.94924 9.08147 6.73384L9.74774 5.93188C9.87516 5.77604 9.93625 5.57783 9.91882 5.37877C9.90139 5.17971 9.80672 4.99444 9.65591 4.86334C9.5051 4.73224 9.30955 4.66581 9.10968 4.67807C8.90981 4.69033 8.72371 4.78031 8.58974 4.92887L7.92348 5.73083C7.44828 6.30657 7.22799 7.04907 7.31195 7.78925C7.39591 8.52942 7.77719 9.20573 8.36916 9.67009C8.96113 10.1344 9.71387 10.3479 10.4588 10.2617C11.2037 10.1755 11.8841 9.79639 12.3482 9.20742L13.0145 8.40546" stroke="#475569" stroke-width="1.2" stroke-linecap="round"/>
-              <path d="M6.48806 12.0054C5.81171 12.4671 4.95953 12.6377 4.14394 12.4764C3.32836 12.3151 2.61426 11.8341 2.17677 11.1454C1.73928 10.4566 1.6149 9.61919 1.83051 8.83571C2.04612 8.05222 2.58327 7.39291 3.30745 7.01701L4.42313 6.42094C4.67276 6.28746 4.9602 6.24605 5.23648 6.30307C5.51276 6.36008 5.76106 6.51195 5.93806 6.7318C6.11506 6.95165 6.21015 7.22606 6.20659 7.50788C6.20303 7.78969 6.10101 8.06158 5.91856 8.27698L5.25229 9.07894C5.12487 9.23478 5.06378 9.43299 5.08121 9.63205C5.09864 9.83111 5.19331 10.0164 5.34412 10.1475C5.49493 10.2786 5.69048 10.345 5.89035 10.3327C6.09022 10.3205 6.27632 10.2305 6.41029 10.0819L7.07656 9.27995C7.55176 8.70421 7.77205 7.96171 7.68809 7.22153C7.60413 6.48136 7.22285 5.80505 6.63088 5.34069C6.03891 4.87633 5.28617 4.66279 4.54124 4.74901C3.7963 4.83522 3.11594 5.21433 2.65179 5.8033L1.98552 6.60526" stroke="#475569" stroke-width="1.2" stroke-linecap="round"/>
-            </svg>
-          </span>
+      <!-- Body -->
+      <div class="card-body">
+        <!-- Input field -->
+        <div class="field">
+          <label class="field-label" for="url-input">URL to shorten</label>
           <input
-            id="original-url"
-            type="url"
+            id="url-input"
             class="input"
-            placeholder="https://your-very-long-url.com/goes/here"
+            class:input-err={error}
+            type="url"
+            placeholder="https://example.com/very/long/path"
+            bind:value={inputUrl}
+            on:keydown={onKeydown}
+            disabled={loading}
             autocomplete="off"
             spellcheck="false"
           />
         </div>
-      </div>
 
-      <!-- Primary button -->
-      <button class="btn-primary" type="button">
-        <span>Shorten URL</span>
-        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-          <path d="M2.91669 7H11.0834" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M7.58331 3.5L11.0833 7L7.58331 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </button>
-
-      <!-- Divider -->
-      <div class="divider" role="separator">
-        <span class="divider-line"></span>
-        <span class="divider-label">shortened link</span>
-        <span class="divider-line"></span>
-      </div>
-
-      <!-- Output field -->
-      <div class="field-group">
-        <label class="field-label" for="short-url">Your Short Link</label>
-        <div class="output-row">
-          <div class="output-wrapper">
-            <span class="output-dot" aria-hidden="true"></span>
-            <input
-              id="short-url"
-              type="text"
-              class="output"
-              value="https://snip.to/xK9mP2"
-              readonly
-              tabindex="-1"
-            />
-          </div>
-          <button class="btn-copy" type="button" aria-label="Copy short URL">
-            <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M5 2H10.5C10.7761 2 11 2.22386 11 2.5V10H13.5C13.7761 10 14 10.2239 14 10.5V13.5C14 13.7761 13.7761 14 13.5 14H5.5C5.22386 14 5 13.7761 5 13.5V11H2.5C2.22386 11 2 10.7761 2 10.5V2.5C2 2.22386 2.22386 2 2.5 2H5Z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M5 2V10.5C5 10.7761 5.22386 11 5.5 11H11V2.5C11 2.22386 10.7761 2 10.5 2H2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+        <!-- Inline error -->
+        {#if error}
+          <div class="err-row" role="alert">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              aria-hidden="true"
+              style="flex-shrink:0;margin-top:1px"
+            >
+              <circle
+                cx="8"
+                cy="8"
+                r="7"
+                stroke="currentColor"
+                stroke-width="1.5"
+              />
+              <line
+                x1="8"
+                y1="5"
+                x2="8"
+                y2="8.5"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+              />
+              <circle cx="8" cy="11" r="0.8" fill="currentColor" />
             </svg>
-            <span>Copy</span>
-          </button>
-        </div>
+            <span>{error.message}</span>
+          </div>
+        {/if}
+
+        <!-- Submit -->
+        <button
+          class="btn-primary"
+          type="button"
+          on:click={shorten}
+          disabled={!canSubmit}
+          aria-busy={loading}
+        >
+          {#if loading}
+            <span class="spinner" aria-hidden="true"></span>
+            Shortening…
+          {:else}
+            Shorten URL
+          {/if}
+        </button>
+
+        <!-- Output -->
+        {#if hasResult}
+          <div class="result" aria-live="polite">
+            <!-- Validity row -->
+            <div class="validity-row">
+              <span class="validity-label">Original URL</span>
+              {#if urlValid === true}
+                <span class="badge badge-ok">
+                  <span class="dot"></span>Reachable
+                </span>
+              {:else if urlValid === false}
+                <span class="badge badge-warn">
+                  <span class="dot"></span>Unreachable
+                </span>
+              {/if}
+            </div>
+
+            <!-- Short URL field -->
+            <div class="field">
+              <label class="field-label" for="short-out">Short link</label>
+              <div class="out-row">
+                <input
+                  id="short-out"
+                  class="input out-input"
+                  type="text"
+                  value={shortUrl}
+                  readonly
+                  tabindex="-1"
+                />
+                <button
+                  class="btn-copy"
+                  class:btn-copied={copied}
+                  type="button"
+                  on:click={copy}
+                  aria-label={copied ? "Copied!" : "Copy link"}
+                >
+                  {#if copied}
+                    <!-- Checkmark -->
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <polyline
+                        points="2.5,8.5 6.5,12.5 13.5,4.5"
+                        stroke="currentColor"
+                        stroke-width="1.7"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      />
+                    </svg>
+                    Copied
+                  {:else}
+                    <!-- Copy pages -->
+                    <svg
+                      width="14"
+                      height="14"
+                      viewBox="0 0 16 16"
+                      fill="none"
+                      aria-hidden="true"
+                    >
+                      <rect
+                        x="5.5"
+                        y="5.5"
+                        width="8"
+                        height="8"
+                        rx="1"
+                        stroke="currentColor"
+                        stroke-width="1.4"
+                      />
+                      <path
+                        d="M3.5 10.5V3.5C3.5 2.94772 3.94772 2.5 4.5 2.5H11.5"
+                        stroke="currentColor"
+                        stroke-width="1.4"
+                        stroke-linecap="round"
+                      />
+                    </svg>
+                    Copy
+                  {/if}
+                </button>
+
+                <!-- Go-to Button -->
+                <button class="btn-copy" type="button" on:click={()=>visit(shortUrl.trim())}>
+                  <!-- visit page -->
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                    aria-hidden="true"
+                  >
+                    <path
+                      d="M3 8H13M8.5 3.5L13 8L8.5 12.5"
+                      stroke="currentColor"
+                      stroke-width="1.4"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                  visit
+                </button>
+              </div>
+            </div>
+
+            <!-- Unreachable warning -->
+            {#if urlValid === false}
+              <p class="warn-note">
+                Link created — but the original URL appears unreachable.
+                Double-check the address before sharing.
+              </p>
+            {/if}
+          </div>
+        {/if}
       </div>
-
-    </div>
-
-    <!-- Card footer hint -->
-    <p class="card-footer">Links are active immediately · No account required</p>
-
+      <!-- /card-body -->
+    </article>
   </div>
-</main>
+</div>
 
 <style>
-  /* ─── Reset & base ─────────────────────────────────── */
+  /* ── Design tokens ───────────────────────────────────── */
+  :global(:root) {
+    /* Surfaces — light */
+    --bg: #f5f5f7;
+    --card: #ffffff;
+    --input-bg: #ffffff;
+    --input-bg-out: #fafafc;
+    /* Ink */
+    --ink: #1d1d1f;
+    --ink-2: #3a3a3c;
+    --ink-3: #6e6e73;
+    --ink-4: #aeaeb2;
+    /* Borders */
+    --border: #d2d2d7;
+    --border-soft: #e8e8ed;
+    /* Accent — Indigo (brief spec) */
+    --accent: #5856d6;
+    --accent-h: #3634c7;
+    --accent-dim: rgba(88, 86, 214, 0.12);
+    --accent-fg: #ffffff;
+    /* Semantic */
+    --ok: #34c759;
+    --ok-bg: #f0fff4;
+    --ok-border: rgba(52, 199, 89, 0.25);
+    --warn: #f59e0b;
+    --warn-bg: #fffbeb;
+    --warn-border: rgba(245, 158, 11, 0.25);
+    --err: #ff3b30;
+    --err-bg: #fff5f5;
+    --err-border: rgba(255, 59, 48, 0.25);
+    /* Shadow */
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 20px rgba(0, 0, 0, 0.07);
+    /* Type */
+    --f-display: "SF Pro Display", ui-sans-serif, system-ui, -apple-system,
+      sans-serif;
+    --f-body: "SF Pro Text", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  }
+
+  :global(.dark) {
+    --bg: #000000;
+    --card: #1c1c1e;
+    --input-bg: #2c2c2e;
+    --input-bg-out: #252527;
+    --ink: #f5f5f7;
+    --ink-2: #ebebf0;
+    --ink-3: #aeaeb2;
+    --ink-4: #636366;
+    --border: #38383a;
+    --border-soft: #2c2c2e;
+    --accent: #7d7aff;
+    --accent-h: #9d9bff;
+    --accent-dim: rgba(125, 122, 255, 0.15);
+    --accent-fg: #ffffff;
+    --ok: #30d158;
+    --ok-bg: rgba(48, 209, 88, 0.1);
+    --ok-border: rgba(48, 209, 88, 0.2);
+    --warn: #ffd60a;
+    --warn-bg: rgba(255, 214, 10, 0.08);
+    --warn-border: rgba(255, 214, 10, 0.2);
+    --err: #ff453a;
+    --err-bg: rgba(255, 69, 58, 0.1);
+    --err-border: rgba(255, 69, 58, 0.2);
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.5), 0 8px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  /* ── Reset ───────────────────────────────────────────── */
   :global(*, *::before, *::after) {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
   }
-
   :global(html, body) {
     height: 100%;
-    font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
-    background-color: #0c0c12;
-    color: #e2e8f0;
+  }
+  :global(body) {
+    font-family: var(--f-body);
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ─── Root layout ─────────────────────────────────── */
+  /* ── Root ────────────────────────────────────────────── */
   .root {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    transition:
+      background 0.18s,
+      color 0.18s;
+  }
+
+  .page {
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1.5rem;
+    padding: 2rem 1rem;
     position: relative;
-    overflow: hidden;
   }
 
-  /* ─── Atmospheric glow ────────────────────────────── */
-  .glow {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -60%);
-    width: 640px;
-    height: 480px;
-    background: radial-gradient(
-      ellipse at center,
-      rgba(99, 102, 241, 0.13) 0%,
-      rgba(139, 92, 246, 0.06) 40%,
-      transparent 70%
-    );
-    pointer-events: none;
-    z-index: 0;
-  }
-
-  /* ─── Card ────────────────────────────────────────── */
-  .card {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    max-width: 480px;
-    background: #13131c;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    border-radius: 20px;
-    box-shadow:
-      0 0 0 1px rgba(99, 102, 241, 0.04),
-      0 4px 6px -1px rgba(0, 0, 0, 0.4),
-      0 24px 48px -8px rgba(0, 0, 0, 0.5);
-    overflow: hidden;
-  }
-
-  /* ─── Card header ─────────────────────────────────── */
-  .card-header {
-    padding: 2.25rem 2.25rem 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .logo-mark {
-    width: 36px;
-    height: 36px;
+  /* ── Theme toggle ────────────────────────────────────── */
+  .theme-btn {
+    position: fixed;
+    top: 1.125rem;
+    right: 1.125rem;
+    width: 34px;
+    height: 34px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(99, 102, 241, 0.12);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    border-radius: 10px;
-    margin-bottom: 0.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0; /* sharp per brief */
+    color: var(--ink-3);
+    cursor: pointer;
+    z-index: 50;
+    transition:
+      color 0.12s,
+      background 0.12s;
+  }
+  .theme-btn:hover {
+    color: var(--ink);
+  }
+  .theme-btn:active {
+    transform: scale(0.94);
   }
 
-  .title {
-    font-size: 1.35rem;
+  /* ── Card ────────────────────────────────────────────── */
+  .card {
+    width: 100%;
+    max-width: 476px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 0; /* sharp corners — brief spec */
+    box-shadow: var(--shadow);
+  }
+
+  /* ── Card header ─────────────────────────────────────── */
+  .card-head {
+    padding: 1.875rem 2rem 1.5rem;
+    border-bottom: 1px solid var(--border-soft);
+  }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.45rem;
+  }
+
+  .wm-icon {
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  .wm-text {
+    font-family: var(--f-display);
+    font-size: 1.3125rem; /* 21px — DESIGN.md tagline scale */
     font-weight: 600;
-    letter-spacing: -0.025em;
-    color: #f1f5f9;
-    line-height: 1.2;
+    letter-spacing: -0.022em; /* DESIGN.md: negative tracking on display */
+    color: var(--ink);
+    line-height: 1;
   }
 
-  .subtitle {
-    font-size: 0.8125rem;
+  .card-sub {
+    font-family: var(--f-body);
+    font-size: 0.875rem; /* 14px — DESIGN.md caption */
     font-weight: 400;
-    color: #475569;
-    line-height: 1.5;
+    letter-spacing: -0.014em;
+    line-height: 1.43;
+    color: var(--ink-3);
   }
 
-  /* ─── Form body ───────────────────────────────────── */
-  .form-body {
-    padding: 1.75rem 2.25rem;
+  /* ── Card body ───────────────────────────────────────── */
+  .card-body {
+    padding: 1.625rem 2rem 2rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.875rem;
   }
 
-  /* ─── Field group ─────────────────────────────────── */
-  .field-group {
+  /* ── Field ───────────────────────────────────────────── */
+  .field {
     display: flex;
     flex-direction: column;
-    gap: 0.375rem;
+    gap: 0.3rem;
   }
 
   .field-label {
-    font-size: 0.7rem;
-    font-weight: 500;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: #475569;
+    font-size: 0.75rem; /* 12px fine-print */
+    font-weight: 400;
+    letter-spacing: -0.008em;
+    color: var(--ink-4);
+    line-height: 1;
+    user-select: none;
   }
 
-  /* ─── Text input ──────────────────────────────────── */
-  .input-wrapper {
-    position: relative;
-  }
-
-  .input-icon {
-    position: absolute;
-    left: 0.875rem;
-    top: 50%;
-    transform: translateY(-50%);
-    display: flex;
-    align-items: center;
-    pointer-events: none;
-  }
-
+  /* ── Input ───────────────────────────────────────────── */
   .input {
     width: 100%;
-    padding: 0.6875rem 0.875rem 0.6875rem 2.5rem;
-    background: #0f0f18;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 10px;
-    font-family: inherit;
-    font-size: 0.8125rem;
-    color: #cbd5e1;
+    height: 44px; /* DESIGN.md: 44px touch min */
+    padding: 0 0.875rem;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 0; /* sharp */
+    font-family: var(--f-body);
+    font-size: 0.9375rem; /* 15px — between caption & body */
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--ink);
     outline: none;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    caret-color: #818cf8;
+    caret-color: var(--accent);
+    transition:
+      border-color 0.1s,
+      box-shadow 0.1s,
+      background 0.15s;
   }
-
   .input::placeholder {
-    color: #2d3748;
+    color: var(--ink-4);
   }
-
   .input:focus {
-    border-color: rgba(99, 102, 241, 0.45);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2.5px var(--accent-dim);
+  }
+  .input:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+  .input-err {
+    border-color: var(--err) !important;
+  }
+  .input-err:focus {
+    box-shadow: 0 0 0 2.5px rgba(255, 59, 48, 0.14) !important;
   }
 
-  /* ─── Primary button ──────────────────────────────── */
+  /* ── Error row ───────────────────────────────────────── */
+  .err-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    padding: 0.625rem 0.75rem;
+    background: var(--err-bg);
+    border: 1px solid var(--err-border);
+    border-radius: 0;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.45;
+    color: var(--err);
+  }
+
+  /* ── Primary button ──────────────────────────────────── */
   .btn-primary {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
+    gap: 0.45rem;
     width: 100%;
-    padding: 0.75rem 1.25rem;
-    background: linear-gradient(135deg, #6366f1 0%, #7c3aed 100%);
-    border: none;
-    border-radius: 10px;
-    font-family: inherit;
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #fff;
+    height: 44px;
+    padding: 0 1.25rem;
+    background: var(--accent);
+    border: 1px solid transparent;
+    border-radius: 0;
+    font-family: var(--f-body);
+    font-size: 0.9375rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    color: var(--accent-fg);
     cursor: pointer;
-    letter-spacing: -0.01em;
-    box-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.3),
-      0 0 0 1px rgba(99, 102, 241, 0.3),
-      inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    transition: opacity 0.15s ease, transform 0.1s ease;
-    margin-top: 0.125rem;
+    transition:
+      background 0.1s,
+      opacity 0.1s,
+      transform 0.07s;
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: var(--accent-h);
+  }
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.97);
+  } /* DESIGN.md: scale(0.95) on press */
+  .btn-primary:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
   }
 
-  .btn-primary:hover {
-    opacity: 0.9;
+  /* ── Spinner ─────────────────────────────────────────── */
+  .spinner {
+    width: 13px;
+    height: 13px;
+    border: 1.75px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner {
+      animation: none;
+      opacity: 0.6;
+    }
   }
 
-  .btn-primary:active {
-    transform: scale(0.99);
+  /* ── Result block ────────────────────────────────────── */
+  .result {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--border-soft);
   }
 
-  /* ─── Divider ─────────────────────────────────────── */
-  .divider {
+  /* ── Validity row ────────────────────────────────────── */
+  .validity-row {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    margin: 0.25rem 0;
-  }
-
-  .divider-line {
-    flex: 1;
-    height: 1px;
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  .divider-label {
-    font-size: 0.6875rem;
-    font-weight: 400;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
-    color: #334155;
-    white-space: nowrap;
-  }
-
-  /* ─── Output row ──────────────────────────────────── */
-  .output-row {
-    display: flex;
+    justify-content: space-between;
     gap: 0.5rem;
-    align-items: stretch;
   }
 
-  .output-wrapper {
-    flex: 1;
-    position: relative;
-    min-width: 0;
-  }
-
-  .output-dot {
-    position: absolute;
-    left: 0.875rem;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #6366f1;
-    box-shadow: 0 0 6px rgba(99, 102, 241, 0.7);
-  }
-
-  .output {
-    width: 100%;
-    padding: 0.6875rem 0.875rem 0.6875rem 2.25rem;
-    background: rgba(99, 102, 241, 0.06);
-    border: 1px solid rgba(99, 102, 241, 0.18);
-    border-radius: 10px;
-    font-family: 'Inter', ui-monospace, monospace;
-    font-size: 0.8125rem;
+  .validity-label {
+    font-size: 0.75rem;
     font-weight: 400;
-    color: #a5b4fc;
-    outline: none;
+    letter-spacing: -0.008em;
+    color: var(--ink-4);
+  }
+
+  /* ── Badge ───────────────────────────────────────────── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.6875rem; /* 11px — micro */
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.2rem 0.5rem;
+    border-radius: 2px; /* minimal radius — not pill */
+    line-height: 1.5;
+    border: 1px solid transparent;
+  }
+
+  .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .badge-ok {
+    background: var(--ok-bg);
+    color: var(--ok);
+    border-color: var(--ok-border);
+  }
+  .badge-ok .dot {
+    background: var(--ok);
+  }
+  .badge-warn {
+    background: var(--warn-bg);
+    color: var(--warn);
+    border-color: var(--warn-border);
+  }
+  .badge-warn .dot {
+    background: var(--warn);
+  }
+
+  /* ── Output row ──────────────────────────────────────── */
+  .out-row {
+    display: flex;
+    gap: 0.375rem;
+  }
+
+  .out-input {
+    flex: 1;
+    min-width: 0;
+    background: var(--input-bg-out);
+    border-color: var(--border-soft);
+    color: var(--accent);
+    font-size: 0.875rem;
     cursor: default;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    letter-spacing: 0.01em;
+  }
+  .out-input:focus {
+    border-color: var(--border);
+    box-shadow: none;
   }
 
-  /* ─── Copy button ─────────────────────────────────── */
+  /* ── Copy button ─────────────────────────────────────── */
   .btn-copy {
     flex-shrink: 0;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
-    padding: 0.6875rem 0.9rem;
-    background: #1a1a26;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    border-radius: 10px;
-    font-family: inherit;
-    font-size: 0.8rem;
-    font-weight: 500;
-    color: #94a3b8;
+    gap: 0.35rem;
+    height: 44px;
+    padding: 0 0.875rem;
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 0;
+    font-family: var(--f-body);
+    font-size: 0.8125rem;
+    font-weight: 400;
+    letter-spacing: -0.012em;
+    color: var(--ink-3);
     cursor: pointer;
     white-space: nowrap;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    transition:
+      background 0.1s,
+      color 0.1s,
+      border-color 0.1s,
+      transform 0.07s;
   }
-
   .btn-copy:hover {
-    background: #1e1e30;
-    border-color: rgba(99, 102, 241, 0.3);
-    color: #c7d2fe;
+    background: var(--border-soft);
+    color: var(--ink);
   }
-
   .btn-copy:active {
-    transform: scale(0.98);
+    transform: scale(0.95);
   }
 
-  /* ─── Card footer ─────────────────────────────────── */
-  .card-footer {
-    padding: 0.875rem 2.25rem 1.5rem;
-    font-size: 0.7rem;
-    color: #1e293b;
-    text-align: center;
-    letter-spacing: 0.02em;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
+  .btn-copied {
+    background: var(--ok-bg) !important;
+    border-color: var(--ok-border) !important;
+    color: var(--ok) !important;
   }
 
-  /* ─── Responsive ──────────────────────────────────── */
+  /* ── Warn note ───────────────────────────────────────── */
+  .warn-note {
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.5;
+    letter-spacing: -0.01em;
+    color: var(--warn);
+    background: var(--warn-bg);
+    border: 1px solid var(--warn-border);
+    border-radius: 0;
+    padding: 0.625rem 0.75rem;
+  }
+
+  /* ── Responsive ──────────────────────────────────────── */
   @media (max-width: 520px) {
-    .root {
-      padding: 1rem;
+    .page {
+      padding: 1rem 0.75rem;
       align-items: flex-start;
-      padding-top: 3rem;
+      padding-top: 3.5rem;
     }
-
-    .card {
-      border-radius: 16px;
+    .card-head {
+      padding: 1.5rem 1.25rem 1.25rem;
     }
-
-    .card-header {
-      padding: 1.75rem 1.5rem 0;
+    .card-body {
+      padding: 1.25rem 1.25rem 1.5rem;
     }
-
-    .form-body {
-      padding: 1.5rem;
-    }
-
-    .card-footer {
-      padding: 0.875rem 1.5rem 1.25rem;
+    .theme-btn {
+      top: 0.75rem;
+      right: 0.75rem;
     }
   }
 </style>
