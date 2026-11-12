@@ -19,3 +19,12 @@ class Settings(BaseSettings):
 
 # create an instance
 settings = Settings()
+
+
+
+
+allowed_origins = [
+    "http://localhost:5173",
+    "http://localhost:5174",
+    "http://localhost:5175",
+]

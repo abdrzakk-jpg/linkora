@@ -12,7 +12,7 @@ router = APIRouter(
     prefix="/v1"
 )
 
-@router.get("/re/{id}", status_code=307)
+@router.get("/re/{id}", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 async def redirecting(id: str, db: Session = Depends(get_db)):
     """ Redirect The to original URL """
     
