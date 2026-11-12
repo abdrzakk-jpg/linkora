@@ -1,0 +1,24 @@
+
+#* I Choose `render.yaml` instead of `Procfile` bcos RENDER IS FREE ;)
+services:
+  - type: web
+    name: linkora
+    runtime: python
+    plan: free
+    buildCommand: uv add -r requirements.txt
+    startCommand: uv run gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app --bind 0.0.0.0:8000
+
+    envVars:
+    # sync: false ===> require manual entry by user (bcoz .env will not be in github)
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_HOSTNAME
+        sync: false
+      - key: DB_PORT
+        sync: false
+      - key: DB_NAME
+        sync: false
+      - key: ENVIRONMENT
+        sync: false
