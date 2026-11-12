@@ -1,2 +1,2 @@
 from app.controllers.async_request import async_get
-from app.controllers.validators import validation_handler
+from app.controllers.validators import URL_validation_handler

@@ -14,8 +14,12 @@ router = APIRouter(
 
 @router.get("/re/{id}", status_code=307)
 async def redirecting(id: str, db: Session = Depends(get_db)):
+    """ Redirect The to original URL """
+    
     try:
         id_query = db.query(models.Url).filter(models.Url.id == id).first()
+        
+        # check the id validation
         if id_query is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
@@ -23,9 +27,9 @@ async def redirecting(id: str, db: Session = Depends(get_db)):
             )
         return RedirectResponse(str(id_query.long_url))
 
-    except HTTPException : raise
+    except HTTPException : raise # ignore HTTPExceptions
+    
     except Exception as e:
-        db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=e

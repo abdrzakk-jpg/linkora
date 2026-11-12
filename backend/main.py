@@ -1,11 +1,10 @@
 
+from app.controllers.validators import URL_validation_handler
 from fastapi.exceptions import RequestValidationError
 from app.api.v1 import redirect, short_url  # import routers
 from app.db.database import Base, engine
 from fastapi import FastAPI
 from scalar_fastapi import Layout, Theme, get_scalar_api_reference
-from app.controllers import validation_handler
-from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
 # creating FastAPI instance 
 app = FastAPI(
@@ -53,9 +52,3 @@ app.include_router(short_url.router)
 app.include_router(redirect.router)
 
 
-#* add exceptions handlers
-app.add_exception_handler(
-    RequestValidationError,
-    # pyrefly: ignore [bad-argument-type]
-    validation_handler
-)

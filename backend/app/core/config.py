@@ -1,10 +1,11 @@
 
-
+# * define env variables-loaders
 
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
+    """ App Settings & variable environments """
     # ==>DB<==
     DB_PASSWORD: str
     DB_USERNAME: str

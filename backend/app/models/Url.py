@@ -10,6 +10,8 @@ from sqlalchemy import (
 
 
 class Url(Base):
+    """ URL model in DB"""
+    
     __tablename__ = 'urls'
     
     id = Column(String(10), primary_key=True, nullable=False, unique=True)
