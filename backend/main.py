@@ -1,6 +1,6 @@
 
-from app.controllers.validators import URL_validation_handler
-from fastapi.exceptions import RequestValidationError
+#from app.controllers.validators import URL_validation_handler
+#from fastapi.exceptions import RequestValidationError
 from app.api.v1 import redirect, short_url  # import routers
 from app.db.database import Base, engine
 from fastapi import FastAPI
