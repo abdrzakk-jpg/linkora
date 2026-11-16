@@ -2,6 +2,7 @@
 #from app.controllers.validators import URL_validation_handler
 #from fastapi.exceptions import RequestValidationError
 
+from app.core.logger import logger
 from fastapi.responses import RedirectResponse
 from app.api.v1 import redirect, short_url  # import routers
 from app.db.database import Base, engine
@@ -55,3 +56,4 @@ app.include_router(short_url.router)
 app.include_router(redirect.router)
 
 
+logger.success("Hello World !")

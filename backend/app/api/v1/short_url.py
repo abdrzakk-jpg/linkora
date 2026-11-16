@@ -8,6 +8,7 @@ from app.models import Url
 from app.db.src import get_db
 from app.schemas import  Response, URL
 from sqlalchemy.orm.session import Session
+from app.core.logger import logger
 
 
 router = APIRouter(
@@ -18,11 +19,13 @@ router = APIRouter(
 async def url_short( req: Request, db: Session = Depends(get_db), url: URL = Depends(valid_url)):
     # Create New Redirect-URL
     try:
+        
         base_url = req.base_url._url # base url 
         query_search = db.query(Url).filter(Url.long_url == url.url.unicode_string()).first()
         
         # if the url is already registered
         if query_search is not None:
+            logger.info(f"</api/v1:short_url.py>::URL Already Registred as: [{query_search.id}] --to-> [{url.url.unicode_string()}]")
             return Response(
                 url = create_redirect_url(base_url, str(query_search.id)).url.unicode_string(),
                 valid=bool(query_search.valid)
@@ -43,12 +46,15 @@ async def url_short( req: Request, db: Session = Depends(get_db), url: URL = Dep
         #* collect url parts & final check
         new_url = create_redirect_url(base_url, str(url_model.id))
         
+        logger.success(f"New URL Registred with ID: [{url_model.id}]--to->[{url.url.unicode_string()}]")
+        
         
         return Response(
             url = new_url.url,
             valid=url.valid
         )
     except HTTPException : raise
+    
     except Exception as e:
         db.rollback()
         raise HTTPException(

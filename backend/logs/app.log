@@ -1,0 +1,27 @@
+2026-11-16 07:47:42 | SUCCESS | Hello World !
+2026-11-16 07:47:47 | SUCCESS | Hello World !
+2026-11-16 07:50:52 | SUCCESS | Hello World !
+2026-11-16 07:51:05 | SUCCESS | Hello World !
+2026-11-16 07:51:12 | SUCCESS | Hello World !
+2026-11-16 07:52:10 | SUCCESS | Hello World !
+2026-11-16 07:52:23 | SUCCESS | Hello World !
+2026-11-16 07:52:35 | SUCCESS | Hello World !
+2026-11-16 07:52:45 | SUCCESS | Hello World !
+2026-11-16 07:52:50 | SUCCESS | Hello World !
+2026-11-16 07:52:55 | SUCCESS | Hello World !
+2026-11-16 07:53:04 | SUCCESS | Hello World !
+2026-11-16 07:53:11 | SUCCESS | Hello World !
+2026-11-16 07:53:23 | SUCCESS | </api/v1:short_url.py>URL Already Registred as: fRRvhHmOZv--to->https://example.com/
+2026-11-16 07:53:36 | SUCCESS | Hello World !
+2026-11-16 07:53:37 | SUCCESS | </api/v1:short_url.py>::URL Already Registred as: fRRvhHmOZv--to->https://example.com/
+2026-11-16 07:53:52 | SUCCESS | Hello World !
+2026-11-16 07:53:53 | SUCCESS | </api/v1:short_url.py>::URL Already Registred as: [fRRvhHmOZv] --to-> [https://example.com/]
+2026-11-16 07:54:23 | SUCCESS | Hello World !
+2026-11-16 07:54:24 | INFO | </api/v1:short_url.py>::URL Already Registred as: [fRRvhHmOZv] --to-> [https://example.com/]
+2026-11-16 07:55:17 | INFO | </api/v1:short_url.py>::URL Already Registred as: [fRRvhHmOZv] --to-> [https://example.com/]
+2026-11-16 07:56:45 | SUCCESS | Hello World !
+2026-11-16 07:58:08 | SUCCESS | Hello World !
+2026-11-16 07:58:21 | INFO | </api/v1:short_url.py>::URL Already Registred as: [fRRvhHmOZv] --to-> [https://example.com/]
+2026-11-16 07:58:37 | SUCCESS | New URL Registred with ID: XstrC3PZTT--to->https://exampqle.com/
+2026-11-16 07:59:02 | SUCCESS | Hello World !
+2026-11-16 07:59:07 | SUCCESS | Hello World !

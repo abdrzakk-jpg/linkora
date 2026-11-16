@@ -1,4 +1,5 @@
 
+from app.core.logger import logger
 from fastapi import status
 from fastapi import HTTPException
 from fastapi import Depends
@@ -23,8 +24,9 @@ async def redirecting(id: str, db: Session = Depends(get_db)):
         if id_query is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail='URL does not exists'
+                detail='URL-ID does not exists'
             )
+        logger.info(f"Redirect destnation: [{id_query}]--to->[{id_query.long_url}]")
         return RedirectResponse(str(id_query.long_url))
 
     except HTTPException : raise # ignore HTTPExceptions
