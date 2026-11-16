@@ -1,5 +1,6 @@
 
 from app.core.logger import logger
+from app.utils.utils import src
 from fastapi import status
 from fastapi import HTTPException
 from fastapi import Depends
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session
 router = APIRouter(
     prefix="/v1"
 )
+file = src(__file__)
 
 @router.get("/re/{id}", status_code=status.HTTP_307_TEMPORARY_REDIRECT)
 async def redirecting(id: str, db: Session = Depends(get_db)):
@@ -26,7 +28,7 @@ async def redirecting(id: str, db: Session = Depends(get_db)):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail='URL-ID does not exists'
             )
-        logger.info(f"Redirect destnation: [{id_query}]--to->[{id_query.long_url}]")
+        logger.info(f"<{file}>:: Redirect destnation: [{id_query}]--to->[{id_query.long_url}]")
         return RedirectResponse(str(id_query.long_url))
 
     except HTTPException : raise # ignore HTTPExceptions

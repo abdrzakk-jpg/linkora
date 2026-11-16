@@ -1,3 +1,4 @@
+
 from loguru import logger
 import os
 
@@ -6,10 +7,11 @@ import os
 def setup_logging():
     logger.remove()  # Remove default handler
 
+    log_format = "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | <level>{message}</level>"
     # Console logging with color and bold text
     logger.add(
         os.sys.stderr,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level}</level> | <level>{message}</level>",
+        format=log_format,
         colorize=True,
         level="INFO"
     )
@@ -26,19 +28,19 @@ def setup_logging():
     # Specific levels
     logger.add(
         os.sys.stderr,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level><b>{level}</b></level> | <level>{message}</level>",
+        format=log_format,
         colorize=True,
         level="WARNING"
     )
     logger.add(
         os.sys.stderr,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level><b>{level}</b></level> | <level>{message}</level>",
+        format=log_format,
         colorize=True,
         level="ERROR"
     )
     logger.add(
         os.sys.stderr,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level><b>{level}</b></level> | <level>{message}</level>",
+        format=log_format,
         colorize=True,
         level="DEBUG"
     )

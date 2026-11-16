@@ -1,6 +1,6 @@
 
 
-from app.utils.colors import pred
+from app.utils.utils import src
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from app.utils.url_ops import valid_url, gen_url_id, create_redirect_url
 from app import models
@@ -14,6 +14,7 @@ from app.core.logger import logger
 router = APIRouter(
     prefix="/v1"
 )
+file = src(__file__)
 
 @router.post("/sh", status_code=status.HTTP_201_CREATED, response_model=Response)
 async def url_short( req: Request, db: Session = Depends(get_db), url: URL = Depends(valid_url)):
@@ -25,7 +26,7 @@ async def url_short( req: Request, db: Session = Depends(get_db), url: URL = Dep
         
         # if the url is already registered
         if query_search is not None:
-            logger.info(f"</api/v1:short_url.py>::URL Already Registred as: [{query_search.id}] --to-> [{url.url.unicode_string()}]")
+            logger.info(f"<{file}>:: URL Already Registred as: [{query_search.id}] --to-> [{url.url.unicode_string()}]")
             return Response(
                 url = create_redirect_url(base_url, str(query_search.id)).url.unicode_string(),
                 valid=bool(query_search.valid)
@@ -46,7 +47,7 @@ async def url_short( req: Request, db: Session = Depends(get_db), url: URL = Dep
         #* collect url parts & final check
         new_url = create_redirect_url(base_url, str(url_model.id))
         
-        logger.success(f"New URL Registred with ID: [{url_model.id}]--to->[{url.url.unicode_string()}]")
+        logger.success(f"<{file}>:: New URL Registred with ID: [{url_model.id}]--to->[{url.url.unicode_string()}]")
         
         
         return Response(
