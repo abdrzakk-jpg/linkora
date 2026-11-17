@@ -28,7 +28,7 @@ async def redirecting(id: str, db: Session = Depends(get_db)):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail='URL-ID does not exists'
             )
-        logger.info(f"<{file}>:: Redirect destnation: [{id_query}]--to->[{id_query.long_url}]")
+        logger.info(f"<{file}>:: Redirect destnation: [{id_query.id}]--to->[{id_query.long_url}]")
         return RedirectResponse(str(id_query.long_url))
 
     except HTTPException : raise # ignore HTTPExceptions
